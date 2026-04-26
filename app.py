@@ -1,10 +1,18 @@
 from fastapi import FastAPI
 from bs4 import BeautifulSoup
 import requests
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 app = FastAPI(title="BeautifulSoup API", description="Extract data from any website")
 
+# ========== WEB INTERFACE (UI) ENDPOINT ==========
+@app.get("/ui", response_class=HTMLResponse)
+async def ui():
+    with open("index.html", "r") as f:
+        return HTMLResponse(content=f.read())
+# ========== END OF UI ENDPOINT ==========
+
+# ========== SCRAPE ENDPOINT ==========
 @app.get("/scrape")
 def scrape(url: str):
     """
@@ -50,10 +58,12 @@ def scrape(url: str):
             "success": False
         }
 
+# ========== ROOT ENDPOINT ==========
 @app.get("/")
 def root():
-    return {"message": "BeautifulSoup API is running. Use /scrape?url=YOUR_URL"}
+    return {"message": "BeautifulSoup API is running. Use /scrape?url=YOUR_URL or go to /ui for web interface"}
 
+# ========== HEALTH ENDPOINT ==========
 @app.get("/health")
 def health():
     return {"status": "ok"}
