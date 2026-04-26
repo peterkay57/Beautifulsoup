@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BeautifulSoup Scraper</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input { width: 80%; padding: 10px; }
+        button { padding: 10px 20px; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>BeautifulSoup Web Scraper</h1>
+    <input type="text" id="url" placeholder="Enter URL to scrape (e.g., https://example.com)">
+    <button onclick="scrape()">Scrape</button>
+    <h3>Result:</h3>
+    <pre id="result">Waiting...</pre>
+
+    <script>
+        async function scrape() {
+            const url = document.getElementById('url').value;
+            if (!url) {
+                alert('Please enter a URL');
+                return;
+            }
+            document.getElementById('result').innerText = 'Scraping...';
+            
+            try {
+                const response = await fetch(`/scrape?url=${encodeURIComponent(url)}`);
+                const data = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').innerText = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
