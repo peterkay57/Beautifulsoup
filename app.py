@@ -1,69 +1,34 @@
-from fastapi import FastAPI
-from bs4 import BeautifulSoup
-import requests
-from fastapi.responses import JSONResponse, HTMLResponse
+from urllib.parse import urljoin, urlparse
 
-app = FastAPI(title="BeautifulSoup API", description="Extract data from any website")
+@app.get("/crawl")
+def crawl(url: str, depth: int = 1):
+    visited = set()
+    queue = [url]
+    results = []
 
-# ========== WEB INTERFACE (UI) ENDPOINT ==========
-@app.get("/ui", response_class=HTMLResponse)
-async def ui():
-    with open("index.html", "r") as f:
-        return HTMLResponse(content=f.read())
-# ========== END OF UI ENDPOINT ==========
-
-# ========== SCRAPE ENDPOINT ==========
-@app.get("/scrape")
-def scrape(url: str):
-    """
-    Extract text from any website URL
-    Example: /scrape?url=https://example.com
-    """
-    try:
-        # Fetch the webpage
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
+    # Simple loop for the crawl
+    while queue and len(visited) < depth:
+        current_url = queue.pop(0)
+        if current_url in visited: continue
         
-        # Parse with BeautifulSoup
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Remove script and style tags
-        for script in soup(["script", "style"]):
-            script.decompose()
-        
-        # Get text
-        text = soup.get_text()
-        
-        # Clean up whitespace
-        lines = (line.strip() for line in text.splitlines())
-        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = ' '.join(chunk for chunk in chunks if chunk)
-        
-        # Get title
-        title = soup.find('title')
-        title_text = title.text if title else "No title found"
-        
-        return {
-            "url": url,
-            "title": title_text,
-            "content": text[:5000],  # First 5000 characters
-            "content_length": len(text),
-            "success": True
-        }
+        try:
+            response = requests.get(current_url, timeout=10)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Save the page data
+            results.append({"url": current_url, "title": soup.title.string if soup.title else "N/A"})
+            visited.add(current_url)
+            
+            # Find all links
+            for link in soup.find_all('a', href=True):
+                full_url = urljoin(current_url, link['href'])
+                # Only crawl links on the same domain
+                if urlparse(full_url).netloc == urlparse(url).netloc:
+                    if full_url not in visited and full_url not in queue:
+                        queue.append(full_url)
+                        
+        except Exception as e:
+            continue # Skip broken links
+            
+    return {"pages_crawled": len(visited), "data": results}
     
-    except Exception as e:
-        return {
-            "url": url,
-            "error": str(e),
-            "success": False
-        }
-
-# ========== ROOT ENDPOINT ==========
-@app.get("/")
-def root():
-    return {"message": "BeautifulSoup API is running. Use /scrape?url=YOUR_URL or go to /ui for web interface"}
-
-# ========== HEALTH ENDPOINT ==========
-@app.get("/health")
-def health():
-    return {"status": "ok"}
